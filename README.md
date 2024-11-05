@@ -8,4 +8,6 @@ Created with the aim of helping people who do not have a mouse and keyboard with
 Just hold down the key and it will repeat while it is pressed.
 
 for build this project in .exe exec:
+<b>
 pyinstaller --onefile --name AutoPresser main.py --hidden-import keyboard --hidden-import mouse
+</b>
