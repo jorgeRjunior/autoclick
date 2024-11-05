@@ -1,5 +1,7 @@
-# autoclick
+# AutoClick
 AutoClick for mouse and keyboard
+
+Basic program in Python
 
 Created with the aim of helping people who do not have a mouse and keyboard with macro function. It is possible to choose the key or mouse click and define the time in ms for repetition.
 
