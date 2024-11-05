@@ -27,7 +27,6 @@ def get_valid_interval():
 
 
 def get_key_choice():
-    print("\n=== AutoClick criado por Git @ jorgeRjunior ===")
     print("\n=== Escolha o tipo de entrada ===")
     print("1. Tecla do teclado")
     print("2. Mouse Button 4 (X2)")
@@ -67,13 +66,15 @@ def auto_presser(interval, input_type, key):
 
     while True:
         try:
-            if input_type == "keyboard" and keyboard.is_pressed(key):
-                keyboard.press(key)
-                keyboard.release(key)
-                time.sleep(interval)
-            elif input_type == "mouse" and mouse.is_pressed(button=key):
-                mouse.press(button=key)
-                mouse.release(button=key)
+            # Verifica se a tecla/botão está pressionada
+            is_pressed = keyboard.is_pressed(key) if input_type == "keyboard" else mouse.is_pressed(button=key)
+
+            if is_pressed:
+                # Só simula o pressionamento enquanto a tecla estiver segurada
+                if input_type == "keyboard":
+                    keyboard.send(key)
+                else:
+                    mouse.click(button=key)
                 time.sleep(interval)
         except Exception as e:
             print(f"Erro: {e}")
