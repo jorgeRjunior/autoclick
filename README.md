@@ -9,5 +9,5 @@ Just hold down the key and it will repeat while it is pressed.
 
 for build this project in .exe exec:
 <b>
-pyinstaller --onefile --name AutoPresser main.py --hidden-import keyboard --hidden-import mouse
+pyinstaller --onefile --noconsole --icon=icon.ico --name "AutoClick V3" --hidden-import keyboard --hidden-import mouse main.py
 </b>
