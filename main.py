@@ -199,9 +199,9 @@ Instruções:
         if not self.validate_inputs():
             return
 
-        self.running = False
-        self.stop_event.set()
+        self.stop_event.set()  # Para qualquer thread anterior
         time.sleep(0.1)
+        self.stop_event.clear()  # Prepara para nova execução
 
         self.start_button.configure(state=tk.DISABLED)
         self.stop_button.configure(state=tk.NORMAL)
@@ -214,15 +214,16 @@ Instruções:
             if self.current_input_type == "keyboard":
                 keyboard.on_press_key(key, self.toggle_action)
             else:
-                mouse.on_button(key, self.toggle_action, mouse.ButtonEvent.UP)
+                mouse.on_click(lambda: self.toggle_action(None))
         else:
-            Thread(target=self.hold_press).start()
+            # Modo "hold"
+            Thread(target=self.hold_press, daemon=True).start()
 
         self.status_text.set("Programa iniciado! Aguardando comando...")
 
     def stop_program(self):
-        self.running = False
         self.stop_event.set()
+        self.running = False
 
         try:
             if self.current_input_type == "keyboard":
@@ -236,7 +237,7 @@ Instruções:
         self.stop_button.configure(state=tk.DISABLED)
         self.status_text.set("Programa parado!")
 
-    def toggle_action(self, _):
+    def toggle_action(self, event=None):  # Tornando o parâmetro opcional
         if not self.running:
             self.status_text.set("Repetição automática iniciada!")
             self.running = True
@@ -248,37 +249,61 @@ Instruções:
             self.stop_event.set()
 
     def hold_press(self):
+        """Método para o modo 'Segurar para repetir'"""
         while not self.stop_event.is_set():
             try:
-                is_pressed = keyboard.is_pressed(
-                    self.current_key) if self.current_input_type == "keyboard" else mouse.is_pressed(
-                    button=self.current_key)
+                # Verifica se o botão está pressionado atualmente
+                if self.current_input_type == "keyboard":
+                    estado_atual = keyboard.is_pressed(self.current_key)
+                else:
+                    estado_atual = mouse.is_pressed(button=self.current_key)
 
-                if is_pressed and not self.running:
-                    self.status_text.set("Repetição automática iniciada!")
-                    self.running = True
-                    self.stop_event.clear()
-                    Thread(target=self.auto_press).start()
-                elif not is_pressed and self.running:
-                    self.status_text.set("Repetição automática parada!")
-                    self.running = False
-                    self.stop_event.set()
+                # Se o botão estiver pressionado, executa a ação
+                if estado_atual:
+                    self.status_text.set("Repetição automática em andamento...")
+                    # Executa a ação
+                    if self.current_input_type == "keyboard":
+                        keyboard.send(self.current_key)
+                    else:
+                        mouse.click(button=self.current_key)
 
+                    # Espera o intervalo definido
+                    intervalo = float(self.interval.get()) / 1000
+                    time.sleep(intervalo)
+                else:
+                    self.status_text.set("Aguardando botão ser pressionado...")
+                    time.sleep(0.01)
+
+            except Exception as e:
+                print(f"Erro em hold_press: {e}")
                 time.sleep(0.1)
-            except:
-                pass
 
     def auto_press(self):
-        interval = float(self.interval.get()) / 1000  # Converte ms para segundos
+        intervalo = float(self.interval.get()) / 1000  # Converte ms para segundos
         while self.running and not self.stop_event.is_set():
             try:
                 if self.current_input_type == "keyboard":
                     keyboard.send(self.current_key)
                 else:
                     mouse.click(button=self.current_key)
-                time.sleep(interval)
-            except:
-                pass
+                time.sleep(intervalo)
+            except Exception as e:
+                print(f"Erro em auto_press: {e}")
+                break
+
+    def auto_press(self):
+        intervalo = float(self.interval.get()) / 1000  # Converte ms para segundos
+        while self.running and not self.stop_event.is_set():
+            try:
+                if self.current_input_type == "keyboard":
+                    keyboard.send(self.current_key)
+                else:
+                    # Usa o mesmo mapeamento de botões para consistência
+                    mouse.click(button=self.current_key)
+                time.sleep(intervalo)
+            except Exception as e:
+                print(f"Erro em auto_press: {e}")
+                break
 
     def run(self):
         self.root.mainloop()
