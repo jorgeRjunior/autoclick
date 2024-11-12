@@ -8,164 +8,282 @@ except ImportError:
     import keyboard
     import mouse
 
+import tkinter as tk
+from tkinter import ttk
+import webbrowser
+from PIL import Image, ImageTk
+import requests
+from io import BytesIO
 import time
 import sys
 import os
 from threading import Thread, Event
 
 
-class AutoPresser:
+class AutoClickerGUI:
     def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("AutoClick V3 dev by jorgeRjunior")
+        self.root.geometry("400x700")
+        self.root.resizable(False, False)
+
+        # Configurando estilo
+        self.style = ttk.Style()
+        self.style.configure("TButton", padding=5)
+        self.style.configure("TRadiobutton", padding=5)
+
+        # Variáveis de controle
+        self.input_type = tk.StringVar(value="keyboard")
+        self.input_type.trace('w', self.on_input_type_change)  # Adiciona callback para mudança
+        self.mode = tk.StringVar(value="toggle")
+        self.key = tk.StringVar()
+        self.interval = tk.StringVar(value="100")
+        self.status_text = tk.StringVar(value="Aguardando início...")
+
+        # Estado do programa
         self.running = False
         self.stop_event = Event()
-        self.input_type = None
-        self.key = None
-        self.interval = None
-        self.mode = None  # 'hold' ou 'toggle'
 
-    def get_valid_interval(self):
-        while True:
-            try:
-                ms = float(input("\nInsira o tempo em ms (exemplo: 100): "))
-                if ms <= 0:
-                    print("Por favor, insira um valor positivo!")
-                    continue
-                return ms / 1000  # Converte ms para segundos
-            except ValueError:
-                print("Por favor, insira um número válido!")
+        self.create_widgets()
 
-    def get_key_choice(self):
-        print("\n=== Escolha o tipo de entrada ===")
-        print("1. Tecla do teclado")
-        print("2. Mouse Button 4 (X2)")
-        print("3. Mouse Button 5 (X1)")
+    def on_input_type_change(self, *args):
+        """Callback para quando o tipo de entrada muda"""
+        if self.input_type.get() == "keyboard":
+            self.key_entry.configure(state='normal')
+        else:
+            self.key_entry.configure(state='disabled')
+            self.key.set('')  # Limpa o campo quando desabilitado
 
-        while True:
-            try:
-                choice = input("\nEscolha uma opção (1-3): ")
-                if choice == "1":
-                    key = input("Digite a tecla desejada (exemplo: e, a, z): ").lower()
-                    return ("keyboard", key)
-                elif choice == "2":
-                    return ("mouse", "x2")
-                elif choice == "3":
-                    return ("mouse", "x1")
-                else:
-                    print("Opção inválida! Escolha entre 1 e 3.")
-            except ValueError:
-                print("Entrada inválida! Tente novamente.")
+    def create_social_button(self, frame, icon_url, link, row, column):
+        try:
+            response = requests.get(icon_url)
+            img = Image.open(BytesIO(response.content))
+            img = img.resize((20, 20))
+            photo = ImageTk.PhotoImage(img)
 
-    def get_mode_choice(self):
-        print("\n=== Escolha o modo de operação ===")
-        print("1. Segurar (mantém pressionado para repetir)")
-        print("2. Alternar (pressiona uma vez para iniciar, outra para parar)")
+            button = tk.Button(
+                frame,
+                image=photo,
+                command=lambda: webbrowser.open(link),
+                cursor="hand2"
+            )
+            button.image = photo
+            button.grid(row=row, column=column, padx=5)
+        except:
+            # Fallback para botão de texto se não conseguir carregar o ícone
+            button = tk.Button(
+                frame,
+                text="GitHub" if "github" in icon_url else "Instagram",
+                command=lambda: webbrowser.open(link),
+                cursor="hand2"
+            )
+            button.grid(row=row, column=column, padx=5)
 
-        while True:
-            try:
-                choice = input("\nEscolha uma opção (1-2): ")
-                if choice in ["1", "2"]:
-                    return "hold" if choice == "1" else "toggle"
-                print("Opção inválida! Escolha entre 1 e 2.")
-            except ValueError:
-                print("Entrada inválida! Tente novamente.")
+    def create_widgets(self):
+        # Frame principal
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-    def hold_press(self):
-        """Função para o modo segurar"""
-        while True:
-            try:
-                is_pressed = keyboard.is_pressed(self.key) if self.input_type == "keyboard" else mouse.is_pressed(
-                    button=self.key)
+        # Título
+        title_label = ttk.Label(main_frame, text="AutoClick V3", font=("Helvetica", 16, "bold"))
+        title_label.grid(row=0, column=0, columnspan=2, pady=5)
 
-                if is_pressed and not self.running:
-                    print("\nIniciando repetição automática...")
-                    self.running = True
-                    self.stop_event.clear()
-                    Thread(target=self.auto_press).start()
-                elif not is_pressed and self.running:
-                    print("\nParando repetição automática...")
-                    self.running = False
-                    self.stop_event.set()
+        dev_label = ttk.Label(main_frame, text="dev by jorgeRjunior", font=("Helvetica", 10, "italic"))
+        dev_label.grid(row=1, column=0, columnspan=2)
 
-                time.sleep(0.1)
-            except Exception as e:
-                print(f"Erro: {e}")
-                time.sleep(1)
+        # Social Media Frame
+        social_frame = ttk.Frame(main_frame)
+        social_frame.grid(row=2, column=0, columnspan=2, pady=5)
+
+        # GitHub e Instagram icons/links
+        self.create_social_button(
+            social_frame,
+            "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            "https://github.com/jorgeRjunior",
+            0, 0
+        )
+        self.create_social_button(
+            social_frame,
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/2048px-Instagram_icon.png",
+            "https://www.instagram.com/jorge.r.jr",
+            0, 1
+        )
+
+        # Tipo de entrada
+        input_frame = ttk.LabelFrame(main_frame, text="Tipo de Entrada", padding=10)
+        input_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        ttk.Radiobutton(input_frame, text="Teclado", variable=self.input_type, value="keyboard").grid(row=0, column=0)
+        ttk.Radiobutton(input_frame, text="Mouse 1 (Esquerdo)", variable=self.input_type, value="left").grid(row=0,
+                                                                                                             column=1)
+        ttk.Radiobutton(input_frame, text="Mouse 2 (Direito)", variable=self.input_type, value="right").grid(row=1,
+                                                                                                             column=0)
+        ttk.Radiobutton(input_frame, text="Mouse 4 (Lateral Frente)", variable=self.input_type, value="x2").grid(row=1,
+                                                                                                                 column=1)
+        ttk.Radiobutton(input_frame, text="Mouse 5 (Lateral Trás)", variable=self.input_type, value="x1").grid(row=2,
+                                                                                                               column=0,
+                                                                                                               columnspan=2)
+
+        # Tecla (quando teclado selecionado)
+        key_frame = ttk.Frame(main_frame)
+        key_frame.grid(row=4, column=0, columnspan=2, pady=5)
+
+        ttk.Label(key_frame, text="Tecla:").grid(row=0, column=0, padx=5)
+        self.key_entry = ttk.Entry(key_frame, textvariable=self.key, width=10)
+        self.key_entry.grid(row=0, column=1)
+
+        # Configura o estado inicial do campo de tecla
+        self.on_input_type_change()
+
+        # Intervalo
+        interval_frame = ttk.Frame(main_frame)
+        interval_frame.grid(row=5, column=0, columnspan=2, pady=5)
+
+        ttk.Label(interval_frame, text="Intervalo (ms):").grid(row=0, column=0, padx=5)
+        ttk.Entry(interval_frame, textvariable=self.interval, width=10).grid(row=0, column=1)
+
+        # Modo de operação
+        mode_frame = ttk.LabelFrame(main_frame, text="Modo de Operação", padding=10)
+        mode_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        ttk.Radiobutton(mode_frame, text="Segurar para repetir", variable=self.mode, value="hold").grid(row=0, column=0)
+        ttk.Radiobutton(mode_frame, text="Alternar (Iniciar/Parar)", variable=self.mode, value="toggle").grid(row=0,
+                                                                                                              column=1)
+
+        # Status
+        status_frame = ttk.LabelFrame(main_frame, text="Status", padding=10)
+        status_frame.grid(row=7, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        ttk.Label(status_frame, textvariable=self.status_text).grid(row=0, column=0)
+
+        # Botões de controle
+        control_frame = ttk.Frame(main_frame)
+        control_frame.grid(row=8, column=0, columnspan=2, pady=10)
+
+        self.start_button = ttk.Button(control_frame, text="Iniciar", command=self.start_program)
+        self.start_button.grid(row=0, column=0, padx=5)
+
+        self.stop_button = ttk.Button(control_frame, text="Parar", command=self.stop_program, state=tk.DISABLED)
+        self.stop_button.grid(row=0, column=1, padx=5)
+
+        # Informações
+        info_text = """
+Instruções:
+- Mouse 1 = Botão esquerdo do mouse
+- Mouse 2 = Botão direito do mouse
+- Mouse 4 = Botão lateral da frente do mouse
+- Mouse 5 = Botão lateral de trás do mouse
+- Para teclas do teclado, digite a letra/tecla desejada
+- O intervalo é o tempo entre as repetições
+        """
+        info_label = ttk.Label(main_frame, text=info_text, justify=tk.LEFT)
+        info_label.grid(row=9, column=0, columnspan=2, pady=10)
+
+    def validate_inputs(self):
+        if self.input_type.get() == "keyboard" and not self.key.get():
+            self.status_text.set("Erro: Digite uma tecla!")
+            return False
+
+        try:
+            interval = float(self.interval.get())
+            if interval <= 0:
+                self.status_text.set("Erro: Intervalo deve ser positivo!")
+                return False
+        except ValueError:
+            self.status_text.set("Erro: Intervalo inválido!")
+            return False
+
+        return True
+
+    def start_program(self):
+        if not self.validate_inputs():
+            return
+
+        self.running = False
+        self.stop_event.set()
+        time.sleep(0.1)
+
+        self.start_button.configure(state=tk.DISABLED)
+        self.stop_button.configure(state=tk.NORMAL)
+
+        key = self.key.get().lower() if self.input_type.get() == "keyboard" else self.input_type.get()
+        self.current_key = key
+        self.current_input_type = self.input_type.get()
+
+        if self.mode.get() == "toggle":
+            if self.current_input_type == "keyboard":
+                keyboard.on_press_key(key, self.toggle_action)
+            else:
+                mouse.on_button(key, self.toggle_action, mouse.ButtonEvent.UP)
+        else:
+            Thread(target=self.hold_press).start()
+
+        self.status_text.set("Programa iniciado! Aguardando comando...")
+
+    def stop_program(self):
+        self.running = False
+        self.stop_event.set()
+
+        try:
+            if self.current_input_type == "keyboard":
+                keyboard.unhook_all()
+            else:
+                mouse.unhook_all()
+        except:
+            pass
+
+        self.start_button.configure(state=tk.NORMAL)
+        self.stop_button.configure(state=tk.DISABLED)
+        self.status_text.set("Programa parado!")
 
     def toggle_action(self, _):
-        """Função para o modo alternar"""
         if not self.running:
-            print("\nIniciando repetição automática...")
+            self.status_text.set("Repetição automática iniciada!")
             self.running = True
             self.stop_event.clear()
             Thread(target=self.auto_press).start()
         else:
-            print("\nParando repetição automática...")
+            self.status_text.set("Repetição automática parada!")
             self.running = False
             self.stop_event.set()
+
+    def hold_press(self):
+        while not self.stop_event.is_set():
+            try:
+                is_pressed = keyboard.is_pressed(
+                    self.current_key) if self.current_input_type == "keyboard" else mouse.is_pressed(
+                    button=self.current_key)
+
+                if is_pressed and not self.running:
+                    self.status_text.set("Repetição automática iniciada!")
+                    self.running = True
+                    self.stop_event.clear()
+                    Thread(target=self.auto_press).start()
+                elif not is_pressed and self.running:
+                    self.status_text.set("Repetição automática parada!")
+                    self.running = False
+                    self.stop_event.set()
+
+                time.sleep(0.1)
+            except:
+                pass
 
     def auto_press(self):
-        """Função que executa os pressionamentos automaticamente"""
+        interval = float(self.interval.get()) / 1000  # Converte ms para segundos
         while self.running and not self.stop_event.is_set():
             try:
-                if self.input_type == "keyboard":
-                    keyboard.send(self.key)
+                if self.current_input_type == "keyboard":
+                    keyboard.send(self.current_key)
                 else:
-                    mouse.click(button=self.key)
-                time.sleep(self.interval)
-            except Exception as e:
-                print(f"Erro durante o pressionamento: {e}")
-                time.sleep(1)
+                    mouse.click(button=self.current_key)
+                time.sleep(interval)
+            except:
+                pass
 
     def run(self):
-        try:
-            print("=== Configuração do Auto Presser ===")
-            self.input_type, self.key = self.get_key_choice()
-            self.interval = self.get_valid_interval()
-            self.mode = self.get_mode_choice()
-
-            print("\n=== Auto Presser Iniciado ===")
-            print(f"Intervalo configurado: {self.interval * 1000:.1f}ms")
-            print(f"Modo: {'Segurar' if self.mode == 'hold' else 'Alternar'}")
-
-            if self.input_type == "keyboard":
-                action_text = f"{'mantenha' if self.mode == 'hold' else 'pressione'} '{self.key.upper()}'"
-            else:
-                button_name = "Mouse Button 4" if self.key == "x2" else "Mouse Button 5"
-                action_text = f"{'mantenha' if self.mode == 'hold' else 'pressione'} o {button_name}"
-
-            print(
-                f"\n{action_text} para {'manter' if self.mode == 'hold' else 'iniciar/parar'} os pressionamentos automáticos")
-
-            print("\nLegenda dos botões do mouse:")
-            print("- Mouse Button 4 = Botão lateral da frente do mouse")
-            print("- Mouse Button 5 = Botão lateral de trás do mouse")
-            print("\nPara fechar o programa, pressione Ctrl+C ou feche esta janela")
-            print("=====================================\n")
-
-            if self.mode == "toggle":
-                # Configura o listener para modo alternar
-                if self.input_type == "keyboard":
-                    keyboard.on_press_key(self.key, self.toggle_action)
-                else:
-                    mouse.on_button(self.key, self.toggle_action, mouse.ButtonEvent.UP)
-
-                # Mantém o programa rodando até Ctrl+C
-                while True:
-                    time.sleep(0.1)
-            else:
-                # Inicia o modo segurar
-                self.hold_press()
-
-        except KeyboardInterrupt:
-            print("\nPrograma encerrado pelo usuário.")
-        except Exception as e:
-            print(f"\nErro crítico: {e}")
-        finally:
-            self.running = False
-            self.stop_event.set()
-            input("\nPressione Enter para sair...")
+        self.root.mainloop()
 
 
 if __name__ == "__main__":
-    auto_presser = AutoPresser()
-    auto_presser.run()
+    app = AutoClickerGUI()
+    app.run()
