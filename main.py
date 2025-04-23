@@ -20,18 +20,35 @@ import os
 import json
 from threading import Thread, Event
 
+# Import ttkbootstrap
+try:
+    import ttkbootstrap as tb
+    from ttkbootstrap.constants import *
+except ImportError:
+    print("ttkbootstrap não está instalado. Instalando...")
+    try:
+        import pip
+        pip.main(['install', 'ttkbootstrap'])
+        import ttkbootstrap as tb
+        from ttkbootstrap.constants import *
+        print("ttkbootstrap instalado com sucesso!")
+    except Exception as e:
+        print(f"Falha ao instalar ttkbootstrap: {e}")
+        print("Por favor, instale manualmente: pip install ttkbootstrap")
+        sys.exit(1)
+
 
 class AutoClickerGUI:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("AutoClick V4 dev by jorgeRjunior")
-        self.root.geometry("500x700")
+        # Use ttkbootstrap Window with a theme
+        # Examples: 'litera', 'cosmo', 'flatly', 'journal', 'lumen', 'minty', 
+        # 'pulse', 'sandstone', 'united', 'yeti' (light themes)
+        # 'cyborg', 'darkly', 'solar', 'superhero', 'vapor' (dark themes)
+        self.root = tb.Window(themename="cosmo")
+        
+        self.root.title("AutoClick V5 dev by jorgeRjunior")
+        self.root.geometry("700x650")
         self.root.resizable(True, True)  # Permitir redimensionamento em todas as direções
-
-        # Configurando estilo
-        self.style = ttk.Style()
-        self.style.configure("TButton", padding=5)
-        self.style.configure("TRadiobutton", padding=5)
 
         # Variáveis de controle
         self.input_type = tk.StringVar(value="keyboard")
@@ -140,21 +157,24 @@ class AutoClickerGUI:
             img = img.resize((20, 20))
             photo = ImageTk.PhotoImage(img)
 
-            button = tk.Button(
+            # Use ttk.Button for themed appearance
+            button = ttk.Button(
                 frame,
                 image=photo,
                 command=lambda: webbrowser.open(link),
-                cursor="hand2"
+                bootstyle="link" # Use link style for subtle buttons
             )
             button.image = photo
             button.grid(row=row, column=column, padx=5)
-        except:
-            # Fallback para botão de texto se não conseguir carregar o ícone
-            button = tk.Button(
+        except Exception as e:
+            print(f"Error loading social icon {icon_url}: {e}")
+            # Fallback to text button if image fails
+            button_text = "GitHub" if "github" in link else "Instagram"
+            button = ttk.Button(
                 frame,
-                text="GitHub" if "github" in icon_url else "Instagram",
+                text=button_text,
                 command=lambda: webbrowser.open(link),
-                cursor="hand2"
+                bootstyle="link"
             )
             button.grid(row=row, column=column, padx=5)
 
@@ -167,7 +187,7 @@ class AutoClickerGUI:
         main_frame.columnconfigure(1, weight=1)
         
         # Título
-        title_label = ttk.Label(main_frame, text="AutoClick V4", font=("Helvetica", 16, "bold"))
+        title_label = ttk.Label(main_frame, text="AutoClick V5", font=("Helvetica", 16, "bold"))
         title_label.grid(row=0, column=0, columnspan=2, pady=5)
 
         dev_label = ttk.Label(main_frame, text="dev by jorgeRjunior", font=("Helvetica", 10, "italic"))
@@ -192,14 +212,19 @@ class AutoClickerGUI:
         )
 
         # Tipo de entrada
-        input_frame = ttk.LabelFrame(main_frame, text="Tipo de Entrada", padding=10)
+        input_frame = ttk.LabelFrame(main_frame, text="Tipo de Entrada", padding=5)
         input_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        # Configure columns for radio buttons if needed (optional, may help spacing)
+        # input_frame.columnconfigure(0, weight=1)
+        # input_frame.columnconfigure(1, weight=1)
+        # input_frame.columnconfigure(2, weight=1)
 
-        ttk.Radiobutton(input_frame, text="Teclado", variable=self.input_type, value="keyboard").grid(row=0, column=0)
-        ttk.Radiobutton(input_frame, text="Mouse 1 (Esquerdo)", variable=self.input_type, value="left").grid(row=0, column=1)
-        ttk.Radiobutton(input_frame, text="Mouse 2 (Direito)", variable=self.input_type, value="right").grid(row=1, column=0)
-        ttk.Radiobutton(input_frame, text="Mouse 4 (Lateral Frente)", variable=self.input_type, value="x2").grid(row=1, column=1)
-        ttk.Radiobutton(input_frame, text="Mouse 5 (Lateral Trás)", variable=self.input_type, value="x1").grid(row=2, column=0, columnspan=2)
+        # Arrange Radiobuttons in two rows, aligned left
+        ttk.Radiobutton(input_frame, text="Teclado", variable=self.input_type, value="keyboard").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(input_frame, text="Mouse 1 (Esquerdo)", variable=self.input_type, value="left").grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(input_frame, text="Mouse 2 (Direito)", variable=self.input_type, value="right").grid(row=0, column=2, sticky=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(input_frame, text="Mouse 4 (Lateral Frente)", variable=self.input_type, value="x2").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(input_frame, text="Mouse 5 (Lateral Trás)", variable=self.input_type, value="x1").grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
 
         # Tecla (quando teclado selecionado)
         key_frame = ttk.Frame(main_frame)
@@ -225,8 +250,8 @@ class AutoClickerGUI:
         mode_frame = ttk.LabelFrame(main_frame, text="Modo de Operação", padding=10)
         mode_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        ttk.Radiobutton(mode_frame, text="Segurar para repetir", variable=self.mode, value="hold").grid(row=0, column=0)
-        ttk.Radiobutton(mode_frame, text="Alternar (Iniciar/Parar)", variable=self.mode, value="toggle").grid(row=0, column=1)
+        ttk.Radiobutton(mode_frame, text="Segurar para repetir", variable=self.mode, value="hold").grid(row=0, column=0, padx=5, pady=2)
+        ttk.Radiobutton(mode_frame, text="Alternar (Iniciar/Parar)", variable=self.mode, value="toggle").grid(row=0, column=1, padx=5, pady=2)
 
         # Status
         status_frame = ttk.LabelFrame(main_frame, text="Status", padding=10)
@@ -431,11 +456,10 @@ Instruções:
     
     def open_mapping_dialog(self, mapping=None, edit_index=None):
         """Open dialog to add or edit a mapping"""
-        dialog = tk.Toplevel(self.root)
+        dialog = tb.Toplevel(self.root)
         dialog.title("Adicionar Nova Função" if mapping is None else "Editar Função")
-        dialog.geometry("420x400")
-        dialog.resizable(True, True)  # Permitir redimensionamento em todas as direções
-        dialog.transient(self.root)
+        dialog.geometry("500x400")
+        dialog.resizable(True, True)
         dialog.grab_set()
         
         default_mode = 'continuous'
@@ -520,10 +544,10 @@ Instruções:
         mode_frame = ttk.Frame(main_frame)
         mode_frame.grid(row=7, column=0, columnspan=3, sticky=tk.W, padx=5, pady=2)
         
-        # Use mode_var (StringVar) now
-        ttk.Radiobutton(mode_frame, text="Contínuo (segurar)", variable=mode_var, value='continuous').pack(side=tk.LEFT)
-        ttk.Radiobutton(mode_frame, text="Uma vez (ao pressionar)", variable=mode_var, value='once').pack(side=tk.LEFT)
-        ttk.Radiobutton(mode_frame, text="Alternar (liga/desliga)", variable=mode_var, value='toggle').pack(side=tk.LEFT)
+        # Use mode_var (StringVar) now, pack vertically
+        ttk.Radiobutton(mode_frame, text="Contínuo (segurar)", variable=mode_var, value='continuous').pack(anchor=tk.W, pady=1)
+        ttk.Radiobutton(mode_frame, text="Uma vez (ao pressionar)", variable=mode_var, value='once').pack(anchor=tk.W, pady=1)
+        ttk.Radiobutton(mode_frame, text="Alternar (liga/desliga)", variable=mode_var, value='toggle').pack(anchor=tk.W, pady=1)
 
         # --- Status de Captura ---
         capture_status_var = tk.StringVar(value="Clique em 'Capturar Gatilho' ou 'Capturar Ação'")

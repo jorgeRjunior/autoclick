@@ -6,7 +6,7 @@
             "action_key": "r",
             "interval": "555",
             "mode": "toggle",
-            "is_active": true
+            "is_active": false
         }
     ]
 }
