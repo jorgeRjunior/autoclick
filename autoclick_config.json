@@ -3,9 +3,10 @@
         {
             "trigger_key": "right",
             "action_type": "keyboard",
-            "action_key": "t",
-            "interval": "100",
-            "once": false
+            "action_key": "r",
+            "interval": "555",
+            "mode": "toggle",
+            "is_active": true
         }
     ]
 }
