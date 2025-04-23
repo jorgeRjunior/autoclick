@@ -596,35 +596,46 @@ Instruções:
 
             return True # Allow event propagation if not capturing
         
-        # Função para capturar cliques do mouse
-        def on_mouse_click(button):
+        # Função para capturar cliques do mouse (NOVA VERSÃO USANDO HOOK GENÉRICO)
+        def dialog_mouse_handler(event):
             nonlocal capture_mode
-            
-            if capture_mode == 'trigger':
-                trigger_key_var.set(button)
-                trigger_display_var.set(f"Gatilho Atual: Mouse '{button}'")
-                capture_status_var.set(f"Gatilho capturado: Mouse '{button}'. Clique em 'Capturar Ação' ou 'Salvar'.")
-                trigger_capture_button.config(state=tk.NORMAL)
-                capture_mode = None
-                return False # Consume event
+            # Only process Button events (ignore MoveEvent, WheelEvent)
+            if not isinstance(event, mouse.ButtonEvent):
+                return True # Allow other event types to propagate
+                
+            # Only act on button down events
+            if event.event_type == mouse.DOWN:
+                # Map button name for consistency (optional, but good)
+                button_name = event.button
+                print(f"[Dialog Mouse Hook] Button Down: {button_name}") # Debug
+                
+                if capture_mode == 'trigger':
+                    trigger_key_var.set(button_name)
+                    trigger_display_var.set(f"Gatilho Atual: Mouse '{button_name}'")
+                    capture_status_var.set(f"Gatilho capturado: Mouse '{button_name}'. Clique em 'Capturar Ação' ou 'Salvar'.")
+                    trigger_capture_button.config(state=tk.NORMAL)
+                    capture_mode = None
+                    return False # Consume event
 
-            elif capture_mode == 'action':
-                action_key_var.set('') # Clear keyboard action key if set
-                action_type_var.set(button) # Define o tipo como o botão do mouse
-                action_display_var.set(f"Ação Atual: Mouse '{button}'")
-                capture_status_var.set(f"Ação capturada: Mouse '{button}'. Ajuste o intervalo e clique em 'Salvar'.")
-                action_capture_button.config(state=tk.NORMAL)
-                capture_mode = None
-                return False # Consume event
-
-            return True # Allow event propagation if not capturing
+                elif capture_mode == 'action':
+                    action_key_var.set('') # Clear keyboard action key
+                    action_type_var.set(button_name) # Set action type to the mouse button
+                    action_display_var.set(f"Ação Atual: Mouse '{button_name}'")
+                    capture_status_var.set(f"Ação capturada: Mouse '{button_name}'. Ajuste o intervalo e clique em 'Salvar'.")
+                    action_capture_button.config(state=tk.NORMAL)
+                    capture_mode = None
+                    return False # Consume event
+                    
+            return True # Allow other button events (UP) to propagate
         
         # Registrar hooks temporários
         keyboard_hook = keyboard.hook(on_key_press)
-        # Use low-level hooks for broader capture without window focus dependency
-        mouse_hook_left = mouse.on_click(lambda: on_mouse_click("left") if capture_mode else None)
-        mouse_hook_right = mouse.on_right_click(lambda: on_mouse_click("right") if capture_mode else None)
-        mouse_hook_middle = mouse.on_middle_click(lambda: on_mouse_click("middle") if capture_mode else None)
+        # Use the generic mouse hook for capturing all buttons
+        dialog_mouse_hook = mouse.hook(dialog_mouse_handler)
+        # REMOVED old specific hooks:
+        # mouse_hook_left = mouse.on_click(lambda: on_mouse_click("left") if capture_mode else None)
+        # mouse_hook_right = mouse.on_right_click(lambda: on_mouse_click("right") if capture_mode else None)
+        # mouse_hook_middle = mouse.on_middle_click(lambda: on_mouse_click("middle") if capture_mode else None)
 
         # --- Botões Finais ---
         fixed_frame = ttk.Frame(dialog)
@@ -633,9 +644,12 @@ Instruções:
         def save_mapping():
             # Remover hooks antes de salvar
             keyboard.unhook(keyboard_hook)
-            mouse.unhook(mouse_hook_left)
-            mouse.unhook(mouse_hook_right)
-            mouse.unhook(mouse_hook_middle)
+            # Unhook the generic mouse hook
+            mouse.unhook(dialog_mouse_hook)
+            # REMOVED old specific unhooks
+            # mouse.unhook(mouse_hook_left)
+            # mouse.unhook(mouse_hook_right)
+            # mouse.unhook(mouse_hook_middle)
             
             # Validar inputs
             if not trigger_key_var.get():
@@ -708,9 +722,12 @@ Instruções:
         def cancel_dialog():
             # Remover hooks antes de fechar
             keyboard.unhook(keyboard_hook)
-            mouse.unhook(mouse_hook_left)
-            mouse.unhook(mouse_hook_right)
-            mouse.unhook(mouse_hook_middle)
+            # Unhook the generic mouse hook
+            mouse.unhook(dialog_mouse_hook)
+             # REMOVED old specific unhooks
+            # mouse.unhook(mouse_hook_left)
+            # mouse.unhook(mouse_hook_right)
+            # mouse.unhook(mouse_hook_middle)
             dialog.destroy()
         
         # Botões de Salvar e Cancelar    
@@ -1039,7 +1056,7 @@ Instruções:
                      if mode == 'toggle':
                          # Special handling for toggle mode
                          print(f"[Hook Registration] Setting up toggle mode handler for index {i}")
-                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2']:
+                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x']:
                              # Mouse triggers for toggle
                              toggle_handler = lambda idx=i: self.handle_toggle_trigger(idx, 'press')
                              # Mouse release handler
@@ -1070,7 +1087,7 @@ Instruções:
                      else:
                          # Normal handling for continuous and once modes
                          # ... existing code for non-toggle modes ...
-                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2']:
+                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x']:
                              # Mouse Trigger - Use press detection within thread
                              handler = lambda idx=i: self.handle_custom_trigger(idx, 'press')
                              if trigger_key == 'left': mouse.on_click(handler)
@@ -1274,6 +1291,146 @@ Instruções:
                 if mapping.get('is_repeating', False):
                      mapping['is_repeating'] = False
                      self._stop_continuous_thread(index)
+
+    # --- New Global Mouse Handler --- 
+    def global_mouse_event_handler(self, event):
+        # Process only button events
+        if isinstance(event, mouse.ButtonEvent):
+            # --- DEBUG: Print exact button name detected --- 
+            print(f"[Global Mouse Hook DEBUG] Detected Button Event: Type={event.event_type}, Button='{event.button}'")
+            
+            event_type_str = 'press' if event.event_type == mouse.DOWN else 'release' if event.event_type == mouse.UP else None
+            
+            if event_type_str:
+                # Check all active mappings for a matching mouse trigger
+                for i, mapping in enumerate(self.custom_mappings):
+                    stored_trigger = mapping.get('trigger_key')
+                    detected_button = event.button
+                    
+                    # --- Handle X1 detection anomaly --- 
+                    # If the library detects 'x' but we stored 'x1', treat as a match.
+                    is_match = False
+                    if stored_trigger == detected_button:
+                        is_match = True
+                    elif stored_trigger == 'x1' and detected_button == 'x':
+                        print(f"[Global Mouse Hook DEBUG] Detected 'x', matching with stored 'x1' for index {i}")
+                        is_match = True
+                    # You could add elif stored_trigger == 'x' and detected_button == 'x1': is_match = True # If needed
+                    
+                    # Compare the detected button name with the stored trigger key
+                    # if mapping.get('is_active', False) and stored_trigger == detected_button:
+                    if mapping.get('is_active', False) and is_match:
+                        # print(f"[Global Mouse Hook] Match found for index {i}") # Debug
+                        mode = mapping.get('mode', 'continuous')
+                        # Call the appropriate handler based on mode
+                        if mode == 'toggle':
+                            self.handle_toggle_trigger(i, event_type_str)
+                        else: # 'continuous' or 'once'
+                            self.handle_custom_trigger(i, event_type_str)
+            
+        return True # Allow event propagation
+        
+    def register_active_hooks(self):
+        """Unhooks all custom mappings and re-registers hooks for active ones."""
+        print("\n[Hook Registration] Starting...")
+        # 1. Stop running threads (toggle and continuous)
+        # ... (Stop toggle threads using toggle_registry)
+        # ... (Stop continuous threads using _running_threads)
+        indices_to_clear_cont = list(self._running_threads.keys())
+        for index in indices_to_clear_cont:
+             self._stop_continuous_thread(index) # Signals the event
+        # Threads remove themselves, but clear dict just in case
+        self._running_threads.clear()
+        
+        indices_to_clear_toggle = list(self.toggle_registry.keys())
+        for index in indices_to_clear_toggle:
+            toggle_info = self.toggle_registry.get(index)
+            if toggle_info and toggle_info.get('stop_event'):
+                print(f"[Hook Registration] Signaling stop for toggle {index}")
+                toggle_info['stop_event'].set()
+        # Toggle threads clean themselves up via toggle_registry_cleanup
+
+        # 2. Unhook all previously registered hooks
+        # Unhook keyboard hooks stored individually
+        for index, removers in self._active_hook_removers.items():
+            for remover in removers:
+                try: remover() 
+                except Exception as e: print(f"[Hook Registration] Error removing kbd hook {index}: {e}")
+        self._active_hook_removers.clear()
+        
+        # Unhook all mouse hooks (simpler than tracking the global one)
+        try: 
+             print("[Hook Registration] Unhooking all mouse events")
+             mouse.unhook_all()
+        except Exception as e: print(f"[Hook Registration] Error unhooking mouse: {e}")
+        # Unhook all keyboard hooks (covers anything missed)
+        try:
+             print("[Hook Registration] Unhooking all keyboard events")
+             keyboard.unhook_all()
+        except Exception as e: print(f"[Hook Registration] Error unhooking kbd: {e}")
+        
+        # Reset global hook registration flag
+        self._global_mouse_hook_registered = False
+
+        # 3. Re-register hooks for active mappings
+        print("[Hook Registration] Re-registering hooks...")
+        for i, mapping in enumerate(self.custom_mappings):
+             mapping['is_trigger_down'] = False # Ensure clean state
+             if mapping.get('is_active', False):
+                 trigger_key = mapping['trigger_key']
+                 mode = mapping.get('mode', 'continuous')
+                 print(f"[Hook Registration] Setting up index {i}: Trigger='{trigger_key}', Mode='{mode}'")
+                 
+                 # Include 'x' as a possible mouse trigger name
+                 is_mouse_trigger = trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x'] 
+                 is_keyboard_trigger = not is_mouse_trigger
+                 
+                 try:
+                     if is_keyboard_trigger:
+                         # --- Register Keyboard Hook --- 
+                         removers = []
+                         if mode == 'toggle':
+                             # Toggle mode keyboard handler
+                             def create_toggle_handler(idx):
+                                 def keyboard_handler(event):
+                                     if event.name == self.custom_mappings[idx]['trigger_key']:
+                                         event_type_str = 'press' if event.event_type == keyboard.KEY_DOWN else 'release' if event.event_type == keyboard.KEY_UP else None
+                                         if event_type_str:
+                                             return self.handle_toggle_trigger(idx, event_type_str)
+                                     return True
+                                 return keyboard_handler
+                             remover = keyboard.hook(create_toggle_handler(i))
+                             removers.append(remover)
+                         else: # Continuous or Once
+                             # Standard keyboard handler
+                             def create_standard_keyboard_handler(idx):
+                                 def keyboard_handler(event):
+                                     if event.name == self.custom_mappings[idx]['trigger_key']:
+                                         event_type_str = 'press' if event.event_type == keyboard.KEY_DOWN else 'release' if event.event_type == keyboard.KEY_UP else None
+                                         if event_type_str:
+                                             return self.handle_custom_trigger(idx, event_type_str)
+                                     return True
+                                 return keyboard_handler
+                             
+                             remover = keyboard.hook(create_standard_keyboard_handler(i))
+                             removers.append(remover)
+                             
+                         if removers:
+                             self._active_hook_removers[i] = removers
+                             print(f"[Hook Registration] Keyboard hook registered for index {i}")
+                             
+                     elif is_mouse_trigger and not self._global_mouse_hook_registered:
+                         # --- Register Global Mouse Hook (only once) --- 
+                         print("[Hook Registration] Registering global mouse hook")
+                         mouse.hook(self.global_mouse_event_handler)
+                         self._global_mouse_hook_registered = True
+                         # No specific remover needed here, rely on unhook_all
+                         
+                 except Exception as e:
+                     print(f"[Hook Registration] Error setting up index {i}: {e}")
+                     mapping['is_active'] = False # Deactivate on error
+                     self.root.after(10, self.refresh_mappings_display)
+        print("[Hook Registration] Finished.")
 
     def run(self):
         self.root.mainloop()

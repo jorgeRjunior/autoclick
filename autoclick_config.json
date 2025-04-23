@@ -1,12 +1,20 @@
 {
     "custom_mappings": [
         {
-            "trigger_key": "right",
+            "trigger_key": "x",
             "action_type": "keyboard",
             "action_key": "r",
             "interval": "555",
             "mode": "toggle",
-            "is_active": false
+            "is_active": true
+        },
+        {
+            "trigger_key": "x2",
+            "action_type": "keyboard",
+            "action_key": "j",
+            "interval": "333",
+            "mode": "toggle",
+            "is_active": true
         }
     ]
 }
