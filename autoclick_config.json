@@ -3,16 +3,8 @@
         {
             "trigger_key": "x",
             "action_type": "keyboard",
-            "action_key": "r",
-            "interval": "555",
-            "mode": "toggle",
-            "is_active": true
-        },
-        {
-            "trigger_key": "x2",
-            "action_type": "keyboard",
-            "action_key": "j",
-            "interval": "333",
+            "action_key": "s",
+            "interval": "1500",
             "mode": "toggle",
             "is_active": true
         }

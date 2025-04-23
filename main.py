@@ -462,6 +462,9 @@ Instruções:
         dialog.resizable(True, True)
         dialog.grab_set()
         
+        # --- Temporarily disable global hooks --- 
+        self.register_active_hooks(temporarily_disable=True)
+        
         default_mode = 'continuous'
         if mapping and 'mode' in mapping:
             default_mode = mapping['mode']
@@ -599,24 +602,17 @@ Instruções:
         # Função para capturar cliques do mouse (NOVA VERSÃO USANDO HOOK GENÉRICO)
         def dialog_mouse_handler(event):
             nonlocal capture_mode
-            # Only process Button events (ignore MoveEvent, WheelEvent)
             if not isinstance(event, mouse.ButtonEvent):
-                return True # Allow other event types to propagate
-                
-            # Only act on button down events
+                return True 
             if event.event_type == mouse.DOWN:
-                # Map button name for consistency (optional, but good)
                 button_name = event.button
-                print(f"[Dialog Mouse Hook] Button Down: {button_name}") # Debug
-                
                 if capture_mode == 'trigger':
                     trigger_key_var.set(button_name)
                     trigger_display_var.set(f"Gatilho Atual: Mouse '{button_name}'")
                     capture_status_var.set(f"Gatilho capturado: Mouse '{button_name}'. Clique em 'Capturar Ação' ou 'Salvar'.")
                     trigger_capture_button.config(state=tk.NORMAL)
                     capture_mode = None
-                    return False # Consume event
-
+                    return False
                 elif capture_mode == 'action':
                     action_key_var.set('') # Clear keyboard action key
                     action_type_var.set(button_name) # Set action type to the mouse button
@@ -624,37 +620,27 @@ Instruções:
                     capture_status_var.set(f"Ação capturada: Mouse '{button_name}'. Ajuste o intervalo e clique em 'Salvar'.")
                     action_capture_button.config(state=tk.NORMAL)
                     capture_mode = None
-                    return False # Consume event
-                    
-            return True # Allow other button events (UP) to propagate
+                    return False
+            return True 
         
-        # Registrar hooks temporários
+        # Registrar hooks TEMPORÁRIOS do diálogo
         keyboard_hook = keyboard.hook(on_key_press)
-        # Use the generic mouse hook for capturing all buttons
         dialog_mouse_hook = mouse.hook(dialog_mouse_handler)
-        # REMOVED old specific hooks:
-        # mouse_hook_left = mouse.on_click(lambda: on_mouse_click("left") if capture_mode else None)
-        # mouse_hook_right = mouse.on_right_click(lambda: on_mouse_click("right") if capture_mode else None)
-        # mouse_hook_middle = mouse.on_middle_click(lambda: on_mouse_click("middle") if capture_mode else None)
-
+        
         # --- Botões Finais ---
         fixed_frame = ttk.Frame(dialog)
         fixed_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
         
         def save_mapping():
-            # Remover hooks antes de salvar
-            keyboard.unhook(keyboard_hook)
-            # Unhook the generic mouse hook
-            mouse.unhook(dialog_mouse_hook)
-            # REMOVED old specific unhooks
-            # mouse.unhook(mouse_hook_left)
-            # mouse.unhook(mouse_hook_right)
-            # mouse.unhook(mouse_hook_middle)
+            # Remover hooks TEMPORÁRIOS do diálogo
+            try: keyboard.unhook(keyboard_hook)
+            except Exception as e: print(f"Error unhooking dialog kbd: {e}")
+            try: mouse.unhook(dialog_mouse_hook)
+            except Exception as e: print(f"Error unhooking dialog mouse: {e}")
             
             # Validar inputs
             if not trigger_key_var.get():
                 messagebox.showerror("Erro", "O gatilho é obrigatório.", parent=dialog)
-                # Re-enable hooks if validation fails and dialog stays open? Or just close? Close is simpler.
                 dialog.destroy() 
                 return
                 
@@ -717,17 +703,21 @@ Instruções:
             if needs_hook_registration:
                  self.register_active_hooks()
                  
+            # Re-register GLOBAL hooks based on current state
+            self.register_active_hooks()
+            
             dialog.destroy()
             
         def cancel_dialog():
-            # Remover hooks antes de fechar
-            keyboard.unhook(keyboard_hook)
-            # Unhook the generic mouse hook
-            mouse.unhook(dialog_mouse_hook)
-             # REMOVED old specific unhooks
-            # mouse.unhook(mouse_hook_left)
-            # mouse.unhook(mouse_hook_right)
-            # mouse.unhook(mouse_hook_middle)
+            # Remover hooks TEMPORÁRIOS do diálogo
+            try: keyboard.unhook(keyboard_hook)
+            except Exception as e: print(f"Error unhooking dialog kbd: {e}")
+            try: mouse.unhook(dialog_mouse_hook)
+            except Exception as e: print(f"Error unhooking dialog mouse: {e}")
+            
+            # Re-register GLOBAL hooks based on current state
+            self.register_active_hooks()
+            
             dialog.destroy()
         
         # Botões de Salvar e Cancelar    
@@ -840,7 +830,6 @@ Instruções:
         except ValueError:
             pass
 
-        # print(f"    Thread started for index {index} (mode: {mode})") # Debug
         while not stop_event.is_set():
             try:
                 # --- Check if trigger is still pressed (ONLY for continuous mode) ---
@@ -852,7 +841,6 @@ Instruções:
                         trigger_pressed = keyboard.is_pressed(trigger_key)
                     
                     if not trigger_pressed:
-                        # print(f"    Trigger {trigger_key} released for index {index} (continuous), stopping thread.") # Debug
                         break # Stop thread if trigger released in continuous mode
 
                 # --- Perform action --- 
@@ -868,7 +856,6 @@ Instruções:
                 print(f"Error in custom mapping thread for index {index}: {e}")
                 break # Exit thread on error
         
-        # print(f"    Thread finished for index {index}") # Debug
         # Clean up thread reference from the central dict when thread finishes
         if index in self._running_threads and self._running_threads[index][1] == stop_event:
              del self._running_threads[index]
@@ -1007,390 +994,54 @@ Instruções:
         if index in self._running_threads:
             _thread, stop_event = self._running_threads[index] 
             if stop_event:
-                # print(f"[Debug] Setting stop event for index {index}")
                 stop_event.set() 
 
-    def register_active_hooks(self):
+    def register_active_hooks(self, temporarily_disable=False):
         """Unhooks all custom mappings and re-registers hooks for active ones."""
-        print("\n[Hook Registration] Starting...")
-        # 1. Stop all currently running continuous threads and clear refs
-        indices_to_clear = list(self._running_threads.keys())
-        for index in indices_to_clear:
-             self._stop_continuous_thread(index)
-        self._running_threads.clear() # Ensure it's empty
-        
-        # 2. Stop all toggle mode threads
-        for index, toggle_info in list(self.toggle_registry.items()):
-            if toggle_info.get('stop_event'):
-                print(f"[Hook Registration] Signaling stop for toggle {index}")
-                toggle_info['stop_event'].set()
-        # Toggle threads clean themselves up
-
-        # 3. Unhook all previously registered custom hooks
-        for index, removers in self._active_hook_removers.items():
-            for remover in removers:
-                try:
-                    remover() # Call the unhook function
-                except Exception as e:
-                    print(f"[Hook Registration] Error removing hook for index {index}: {e}")
-        self._active_hook_removers.clear()
-        
-        # Try a simpler mouse unhook for all mouse events
-        try:
-             mouse.unhook_all()
-        except Exception as e:
-             print(f"[Hook Registration] Error unhooking all mouse events: {e}")
-
-        # 4. Re-register hooks for mappings marked as active
-        for i, mapping in enumerate(self.custom_mappings):
-             # Reset trigger state when registering hooks
-             mapping['is_trigger_down'] = False # Ensure clean state
-                 
-             if mapping.get('is_active', False):
-                 print(f"[Hook Registration] Registering hook for index {i}, mode: {mapping.get('mode', 'continuous')}")
-                 trigger_key = mapping['trigger_key']
-                 mode = mapping.get('mode', 'continuous')
-                 removers = []
-                 
-                 try:
-                     if mode == 'toggle':
-                         # Special handling for toggle mode
-                         print(f"[Hook Registration] Setting up toggle mode handler for index {i}")
-                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x']:
-                             # Mouse triggers for toggle
-                             toggle_handler = lambda idx=i: self.handle_toggle_trigger(idx, 'press')
-                             # Mouse release handler
-                             release_handler = lambda idx=i: self.handle_toggle_trigger(idx, 'release')
-                             
-                             if trigger_key == 'left': 
-                                 mouse.on_click(toggle_handler)
-                                 # Can't easily hook mouse release
-                             elif trigger_key == 'right': 
-                                 mouse.on_right_click(toggle_handler)
-                             elif trigger_key == 'middle': 
-                                 mouse.on_middle_click(toggle_handler)
-                         else:
-                             # Keyboard triggers for toggle
-                             def create_toggle_handler(idx):
-                                 def keyboard_handler(event):
-                                     if event.name == self.custom_mappings[idx]['trigger_key']:
-                                         if event.event_type == keyboard.KEY_DOWN:
-                                             return self.handle_toggle_trigger(idx, 'press')
-                                         elif event.event_type == keyboard.KEY_UP:
-                                             return self.handle_toggle_trigger(idx, 'release')
-                                     return True
-                                 return keyboard_handler
-                                 
-                             toggle_handler = create_toggle_handler(i)
-                             remover = keyboard.hook(toggle_handler)
-                             removers.append(remover)
-                     else:
-                         # Normal handling for continuous and once modes
-                         # ... existing code for non-toggle modes ...
-                         if trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x']:
-                             # Mouse Trigger - Use press detection within thread
-                             handler = lambda idx=i: self.handle_custom_trigger(idx, 'press')
-                             if trigger_key == 'left': mouse.on_click(handler)
-                             elif trigger_key == 'right': mouse.on_right_click(handler)
-                             elif trigger_key == 'middle': mouse.on_middle_click(handler)
-                         else:
-                             # Keyboard Trigger - Single hook, check event type
-                             def create_keyboard_handler(idx):
-                                 def keyboard_handler(event):
-                                     if event.name == self.custom_mappings[idx]['trigger_key']:
-                                         if event.event_type == keyboard.KEY_DOWN:
-                                             return self.handle_custom_trigger(idx, 'press')
-                                         elif event.event_type == keyboard.KEY_UP:
-                                             return self.handle_custom_trigger(idx, 'release')
-                                     return True
-                                 return keyboard_handler
-                                 
-                             specific_handler = create_keyboard_handler(i)
-                             remover = keyboard.hook(specific_handler)
-                             removers.append(remover)
-                     
-                     if removers:
-                          self._active_hook_removers[i] = removers
-                 except Exception as e:
-                     print(f"[Hook Registration] Error registering hook for mapping {i} ('{trigger_key}'): {e}")
-                     # Error handling... (existing code)
-
-    def handle_toggle_trigger(self, index, event_type):
-        """Dedicated handler for toggle mode triggers"""
-        # print(f"[TOGGLE Handler] Event: {event_type} for index {index}")
-        
-        if not (0 <= index < len(self.custom_mappings)):
-            print(f"[TOGGLE Handler] Index {index} out of bounds")
-            return False
-            
-        mapping = self.custom_mappings[index]
-        
-        if event_type == 'press':
-            # Only handle if mode is toggle and mapping is active
-            if mapping.get('mode', 'continuous') == 'toggle' and mapping.get('is_active', False):
-                print(f"[TOGGLE Handler] Press detected for toggle {index}")
-                
-                # Simple toggle logic - just check if active and invert
-                toggle_info = self.toggle_registry.get(index)
-                
-                if toggle_info and toggle_info.get('active', False):
-                    # Already running - TURN OFF
-                    print(f"[TOGGLE Handler] Toggle {index} is ON - turning OFF")
-                    toggle_info['active'] = False
-                    if toggle_info.get('stop_event'):
-                        toggle_info['stop_event'].set()
-                        print(f"[TOGGLE Handler] Stop event signaled for {index}")
-                else:
-                    # Not running - TURN ON
-                    print(f"[TOGGLE Handler] Toggle {index} is OFF - turning ON")
-                    
-                    # Create new thread and stop event
-                    stop_event = Event()
-                    thread = Thread(
-                        target=self.toggle_repeater_thread,
-                        args=(index, stop_event),
-                        daemon=True
-                    )
-                    
-                    # Register before starting
-                    self.toggle_registry[index] = {
-                        'active': True,
-                        'thread': thread, 
-                        'stop_event': stop_event
-                    }
-                    
-                    # Start thread
-                    thread.start()
-                    print(f"[TOGGLE Handler] Thread started for {index}")
-            
-            return False # Consume the event
-            
-        # We still handle release events to be thorough
-        elif event_type == 'release':
-            # print(f"[TOGGLE Handler] Release event for index {index}")
-            return False # Consume event
-            
-        return True # Let other events propagate
-        
-    def toggle_repeater_thread(self, index, stop_event):
-        """Dedicated thread for toggle mode repeater"""
-        print(f"[TOGGLE Thread] Starting for index {index}")
-        if not (0 <= index < len(self.custom_mappings)):
-            print(f"[TOGGLE Thread] Index {index} out of bounds")
-            return
-            
-        mapping = self.custom_mappings[index]
-        action_type = mapping.get('action_type', 'keyboard')
-        action_key = mapping.get('action_key', '')
-        
-        try:
-            interval = float(mapping.get('interval', '100')) / 1000
-            if interval <= 0: interval = 0.01
-        except ValueError:
-            interval = 0.1 # Default
-        
-        try:
-            repeat_count = 0
-            # Loop until stop event is set
-            while not stop_event.is_set():
-                # Check if mapping still exists and is active
-                if not (0 <= index < len(self.custom_mappings)):
-                    print(f"[TOGGLE Thread] Mapping {index} no longer exists")
-                    break
-                    
-                if not mapping.get('is_active', False):
-                    print(f"[TOGGLE Thread] Mapping {index} no longer active")
-                    break
-                
-                # Perform action
-                try:
-                    if action_type == 'keyboard':
-                        keyboard.send(action_key)
-                    else:
-                        mouse.click(button=action_type)
-                    repeat_count += 1
-                    
-                    if repeat_count % 10 == 0: # Only log every 10 repeats to reduce noise
-                        print(f"[TOGGLE Thread] Still running for {index} - count: {repeat_count}")
-                except Exception as action_error:
-                    print(f"[TOGGLE Thread] Error performing action: {action_error}")
-                
-                # Check stop_event.is_set() again before sleeping, to be more responsive
-                if stop_event.is_set():
-                    print(f"[TOGGLE Thread] Detected stop event before sleep - count: {repeat_count}")
-                    break
-                
-                # Sleep for interval
-                time.sleep(interval)
-                
-        except Exception as e:
-            print(f"[TOGGLE Thread] Error in toggle thread for index {index}: {e}")
-        finally:
-            # Cleanup
-            print(f"[TOGGLE Thread] Thread ending for index {index} after {repeat_count} repeats")
-            # Add to cleanup list to avoid modifying during iteration
-            self.toggle_cleanup_indices.append(index)
-            # Schedule cleanup on main thread
-            self.root.after(100, self.toggle_registry_cleanup)
-            
-    def toggle_registry_cleanup(self):
-        """Clean up toggle registry entries for finished threads"""
-        if not self.toggle_cleanup_indices:
-            return
-            
-        for index in self.toggle_cleanup_indices:
-            if index in self.toggle_registry:
-                print(f"[TOGGLE Cleanup] Removing index {index} from registry")
-                del self.toggle_registry[index]
-                
-        self.toggle_cleanup_indices.clear()
-
-    def handle_custom_trigger(self, index, event_type):
-        """Handles the trigger event for non-toggle mappings."""
-        # This function now only handles 'once' and 'continuous' modes
-        if not (0 <= index < len(self.custom_mappings)): return 
-        mapping = self.custom_mappings[index]
-        if not mapping.get('is_active', False): return
-        
-        mode = mapping.get('mode', 'continuous')
-        
-        # Skip toggle mode triggers - those are handled by handle_toggle_trigger
-        if mode == 'toggle': return True
-        
-        # ... (rest of function for 'once' and 'continuous' modes remains unchanged)
-        # Get other details from mapping
-        action_type = mapping['action_type']
-        action_key = mapping.get('action_key', '')
-        was_down = mapping.get('is_trigger_down', False)
-
-        if event_type == 'press':
-            mapping['is_trigger_down'] = True 
-            
-            # Only act on the initial press, not key repeat
-            if not was_down: 
-                if mode == 'once':
-                    # --- Mode: Once ---
-                    try:
-                        if action_type == 'keyboard': keyboard.send(action_key)
-                        else: mouse.click(button=action_type)
-                    except Exception as e: print(f"Error performing 'once' action for mapping {index}: {e}")
-                
-                elif mode == 'continuous':
-                    # Start thread
-                    if not mapping.get('is_repeating', False):
-                        mapping['is_repeating'] = True
-                        stop_event = Event()
-                        thread = Thread(target=self.run_custom_mapping, args=(index, stop_event), daemon=True)
-                        self._running_threads[index] = (thread, stop_event)
-                        thread.start()
-
-        elif event_type == 'release':
-            mapping['is_trigger_down'] = False 
-            if mode == 'continuous':
-                # For continuous, stop repeating when key is released
-                if mapping.get('is_repeating', False):
-                     mapping['is_repeating'] = False
-                     self._stop_continuous_thread(index)
-
-    # --- New Global Mouse Handler --- 
-    def global_mouse_event_handler(self, event):
-        # Process only button events
-        if isinstance(event, mouse.ButtonEvent):
-            # --- DEBUG: Print exact button name detected --- 
-            print(f"[Global Mouse Hook DEBUG] Detected Button Event: Type={event.event_type}, Button='{event.button}'")
-            
-            event_type_str = 'press' if event.event_type == mouse.DOWN else 'release' if event.event_type == mouse.UP else None
-            
-            if event_type_str:
-                # Check all active mappings for a matching mouse trigger
-                for i, mapping in enumerate(self.custom_mappings):
-                    stored_trigger = mapping.get('trigger_key')
-                    detected_button = event.button
-                    
-                    # --- Handle X1 detection anomaly --- 
-                    # If the library detects 'x' but we stored 'x1', treat as a match.
-                    is_match = False
-                    if stored_trigger == detected_button:
-                        is_match = True
-                    elif stored_trigger == 'x1' and detected_button == 'x':
-                        print(f"[Global Mouse Hook DEBUG] Detected 'x', matching with stored 'x1' for index {i}")
-                        is_match = True
-                    # You could add elif stored_trigger == 'x' and detected_button == 'x1': is_match = True # If needed
-                    
-                    # Compare the detected button name with the stored trigger key
-                    # if mapping.get('is_active', False) and stored_trigger == detected_button:
-                    if mapping.get('is_active', False) and is_match:
-                        # print(f"[Global Mouse Hook] Match found for index {i}") # Debug
-                        mode = mapping.get('mode', 'continuous')
-                        # Call the appropriate handler based on mode
-                        if mode == 'toggle':
-                            self.handle_toggle_trigger(i, event_type_str)
-                        else: # 'continuous' or 'once'
-                            self.handle_custom_trigger(i, event_type_str)
-            
-        return True # Allow event propagation
-        
-    def register_active_hooks(self):
-        """Unhooks all custom mappings and re-registers hooks for active ones."""
-        print("\n[Hook Registration] Starting...")
-        # 1. Stop running threads (toggle and continuous)
-        # ... (Stop toggle threads using toggle_registry)
-        # ... (Stop continuous threads using _running_threads)
-        indices_to_clear_cont = list(self._running_threads.keys())
-        for index in indices_to_clear_cont:
-             self._stop_continuous_thread(index) # Signals the event
-        # Threads remove themselves, but clear dict just in case
-        self._running_threads.clear()
-        
+        hook_action = "Disabling" if temporarily_disable else "Registering"
         indices_to_clear_toggle = list(self.toggle_registry.keys())
         for index in indices_to_clear_toggle:
             toggle_info = self.toggle_registry.get(index)
             if toggle_info and toggle_info.get('stop_event'):
-                print(f"[Hook Registration] Signaling stop for toggle {index}")
                 toggle_info['stop_event'].set()
-        # Toggle threads clean themselves up via toggle_registry_cleanup
+        indices_to_clear_cont = list(self._running_threads.keys())
+        for index in indices_to_clear_cont:
+             self._stop_continuous_thread(index) # Signals the event
+        self._running_threads.clear()
 
-        # 2. Unhook all previously registered hooks
-        # Unhook keyboard hooks stored individually
-        for index, removers in self._active_hook_removers.items():
+        for index, removers in list(self._active_hook_removers.items()): # Use list to avoid runtime dict change error
             for remover in removers:
                 try: remover() 
-                except Exception as e: print(f"[Hook Registration] Error removing kbd hook {index}: {e}")
-        self._active_hook_removers.clear()
+                except Exception as e: print(f"[{hook_action} Hooks] Error removing kbd hook {index}: {e}")
+            if index in self._active_hook_removers: del self._active_hook_removers[index]
         
-        # Unhook all mouse hooks (simpler than tracking the global one)
-        try: 
-             print("[Hook Registration] Unhooking all mouse events")
-             mouse.unhook_all()
-        except Exception as e: print(f"[Hook Registration] Error unhooking mouse: {e}")
-        # Unhook all keyboard hooks (covers anything missed)
-        try:
-             print("[Hook Registration] Unhooking all keyboard events")
-             keyboard.unhook_all()
-        except Exception as e: print(f"[Hook Registration] Error unhooking kbd: {e}")
-        
-        # Reset global hook registration flag
-        self._global_mouse_hook_registered = False
+        try: mouse.unhook_all()
+        except Exception as e: print(f"[{hook_action} Hooks] Error unhooking mouse: {e}")
+        try: keyboard.unhook_all()
+        except Exception as e: print(f"[{hook_action} Hooks] Error unhooking kbd: {e}")
 
-        # 3. Re-register hooks for active mappings
-        print("[Hook Registration] Re-registering hooks...")
+        if temporarily_disable:
+             self._global_mouse_hook_registered = False 
+             return
+
+        self._global_mouse_hook_registered = False
+        any_mouse_trigger_active = False # Flag to check if global mouse hook is needed
         for i, mapping in enumerate(self.custom_mappings):
              mapping['is_trigger_down'] = False # Ensure clean state
              if mapping.get('is_active', False):
                  trigger_key = mapping['trigger_key']
                  mode = mapping.get('mode', 'continuous')
-                 print(f"[Hook Registration] Setting up index {i}: Trigger='{trigger_key}', Mode='{mode}'")
                  
-                 # Include 'x' as a possible mouse trigger name
                  is_mouse_trigger = trigger_key in ['left', 'right', 'middle', 'x1', 'x2', 'x'] 
                  is_keyboard_trigger = not is_mouse_trigger
                  
+                 if is_mouse_trigger:
+                     any_mouse_trigger_active = True
+                     
                  try:
                      if is_keyboard_trigger:
-                         # --- Register Keyboard Hook --- 
                          removers = []
                          if mode == 'toggle':
-                             # Toggle mode keyboard handler
                              def create_toggle_handler(idx):
                                  def keyboard_handler(event):
                                      if event.name == self.custom_mappings[idx]['trigger_key']:
@@ -1402,7 +1053,6 @@ Instruções:
                              remover = keyboard.hook(create_toggle_handler(i))
                              removers.append(remover)
                          else: # Continuous or Once
-                             # Standard keyboard handler
                              def create_standard_keyboard_handler(idx):
                                  def keyboard_handler(event):
                                      if event.name == self.custom_mappings[idx]['trigger_key']:
@@ -1417,21 +1067,183 @@ Instruções:
                              
                          if removers:
                              self._active_hook_removers[i] = removers
-                             print(f"[Hook Registration] Keyboard hook registered for index {i}")
+                         else:
+                             print(f"    <-- [{hook_action} Hooks] KEYBOARD hook FAILED to register for index {i}")
                              
-                     elif is_mouse_trigger and not self._global_mouse_hook_registered:
-                         # --- Register Global Mouse Hook (only once) --- 
-                         print("[Hook Registration] Registering global mouse hook")
-                         mouse.hook(self.global_mouse_event_handler)
-                         self._global_mouse_hook_registered = True
-                         # No specific remover needed here, rely on unhook_all
-                         
                  except Exception as e:
-                     print(f"[Hook Registration] Error setting up index {i}: {e}")
+                     print(f"    XXX [{hook_action} Hooks] Error setting up index {i}: {e}")
                      mapping['is_active'] = False # Deactivate on error
                      self.root.after(10, self.refresh_mappings_display)
-        print("[Hook Registration] Finished.")
+                     
+        if any_mouse_trigger_active and not self._global_mouse_hook_registered:
+             try:
+                 mouse.hook(self.global_mouse_event_handler)
+                 self._global_mouse_hook_registered = True
+             except Exception as e:
+                  print(f"    XXX [{hook_action} Hooks] Error registering global mouse hook: {e}")
+        elif any_mouse_trigger_active and self._global_mouse_hook_registered:
+             print(f"  -- [{hook_action} Hooks] Global mouse hook ALREADY registered.")
+        elif not any_mouse_trigger_active:
+             print(f"  -- [{hook_action} Hooks] No active mouse triggers found. Skipping global mouse hook.")
+             
+    def handle_toggle_trigger(self, index, event_type):
+        """Dedicated handler for toggle mode triggers"""
+        if not (0 <= index < len(self.custom_mappings)):
+            return False
+            
+        mapping = self.custom_mappings[index]
+        
+        if event_type == 'press':
+            if mapping.get('mode', 'continuous') == 'toggle' and mapping.get('is_active', False):
+                toggle_info = self.toggle_registry.get(index)
+                
+                if toggle_info and toggle_info.get('active', False):
+                    toggle_info['active'] = False
+                    if toggle_info.get('stop_event'):
+                        toggle_info['stop_event'].set()
+                else:
+                    stop_event = Event()
+                    thread = Thread(
+                        target=self.toggle_repeater_thread,
+                        args=(index, stop_event),
+                        daemon=True
+                    )
+                    
+                    toggle_info = {
+                        'active': True,
+                        'thread': thread, 
+                        'stop_event': stop_event
+                    }
+                    
+                    self.toggle_registry[index] = toggle_info
+                    thread.start()
+            
+            return False # Consume the event
+            
+        elif event_type == 'release':
+            return False # Consume event
+            
+        return True # Let other events propagate
+        
+    def toggle_repeater_thread(self, index, stop_event):
+        """Dedicated thread for toggle mode repeater"""
+        if not (0 <= index < len(self.custom_mappings)):
+            return
+            
+        mapping = self.custom_mappings[index]
+        action_type = mapping.get('action_type', 'keyboard')
+        action_key = mapping.get('action_key', '')
+        
+        try:
+            interval = float(mapping.get('interval', '100')) / 1000
+            if interval <= 0: interval = 0.01
+        except ValueError:
+            interval = 0.1 # Default
+        
+        try:
+            repeat_count = 0
+            while not stop_event.is_set():
+                if not (0 <= index < len(self.custom_mappings)):
+                    break
+                    
+                if not mapping.get('is_active', False):
+                    break
+                
+                try:
+                    if action_type == 'keyboard':
+                        keyboard.send(action_key)
+                    else:
+                        mouse.click(button=action_type)
+                    repeat_count += 1
+                except Exception as action_error:
+                    print(f"[TOGGLE Thread] Error performing action: {action_error}")
+                
+                if stop_event.is_set():
+                    break
+                
+                time.sleep(interval)
+                
+        except Exception as e:
+            print(f"[TOGGLE Thread] Error in toggle thread for index {index}: {e}")
+        finally:
+            self.toggle_cleanup_indices.append(index)
+            self.root.after(100, self.toggle_registry_cleanup)
+            
+    def toggle_registry_cleanup(self):
+        """Clean up toggle registry entries for finished threads"""
+        if not self.toggle_cleanup_indices:
+            return
+            
+        for index in self.toggle_cleanup_indices:
+            if index in self.toggle_registry:
+                del self.toggle_registry[index]
+                
+        self.toggle_cleanup_indices.clear()
 
+    def handle_custom_trigger(self, index, event_type):
+        """Handles the trigger event for non-toggle mappings."""
+        if not (0 <= index < len(self.custom_mappings)): return 
+        mapping = self.custom_mappings[index]
+        if not mapping.get('is_active', False): return
+        
+        mode = mapping.get('mode', 'continuous')
+        
+        if mode == 'toggle': return True
+        
+        action_type = mapping['action_type']
+        action_key = mapping.get('action_key', '')
+        was_down = mapping.get('is_trigger_down', False)
+
+        if event_type == 'press':
+            mapping['is_trigger_down'] = True 
+            
+            if not was_down: 
+                if mode == 'once':
+                    try:
+                        if action_type == 'keyboard': keyboard.send(action_key)
+                        else: mouse.click(button=action_type)
+                    except Exception as e: print(f"Error performing 'once' action for mapping {index}: {e}")
+                
+                elif mode == 'continuous':
+                    if not mapping.get('is_repeating', False):
+                        mapping['is_repeating'] = True
+                        stop_event = Event()
+                        thread = Thread(target=self.run_custom_mapping, args=(index, stop_event), daemon=True)
+                        self._running_threads[index] = (thread, stop_event)
+                        thread.start()
+
+        elif event_type == 'release':
+            mapping['is_trigger_down'] = False 
+            if mode == 'continuous':
+                if mapping.get('is_repeating', False):
+                     mapping['is_repeating'] = False
+                     self._stop_continuous_thread(index)
+
+    # --- New Global Mouse Handler --- 
+    def global_mouse_event_handler(self, event):
+        if isinstance(event, mouse.ButtonEvent):
+            event_type_str = 'press' if event.event_type == mouse.DOWN else 'release' if event.event_type == mouse.UP else None
+            
+            if event_type_str:
+                for i, mapping in enumerate(self.custom_mappings):
+                    stored_trigger = mapping.get('trigger_key')
+                    detected_button = event.button
+                    
+                    is_match = False
+                    if stored_trigger == detected_button:
+                        is_match = True
+                    elif stored_trigger == 'x1' and detected_button == 'x':
+                        is_match = True
+                    
+                    if mapping.get('is_active', False) and is_match:
+                        mode = mapping.get('mode', 'continuous')
+                        if mode == 'toggle':
+                            self.handle_toggle_trigger(i, event_type_str)
+                        else: # 'continuous' or 'once'
+                            self.handle_custom_trigger(i, event_type_str)
+            
+        return True # Allow event propagation
+        
     def run(self):
         self.root.mainloop()
 
