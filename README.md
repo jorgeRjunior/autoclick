@@ -50,4 +50,5 @@ Um aplicativo de autoclicker versátil com interface gráfica construído em Pyt
 
 ## Download Executavel
 * Download do arquivo executavel disponivel em https://github.com/jorgeRjunior/autoclick/tree/main/dist
-*OBS: Execute como administrador.
+
+* **OBS: Execute como administrador.**
