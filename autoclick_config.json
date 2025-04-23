@@ -1,0 +1,11 @@
+{
+    "custom_mappings": [
+        {
+            "trigger_key": "right",
+            "action_type": "keyboard",
+            "action_key": "t",
+            "interval": "100",
+            "once": false
+        }
+    ]
+}
