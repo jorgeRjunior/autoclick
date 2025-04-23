@@ -48,4 +48,6 @@ Um aplicativo de autoclicker versátil com interface gráfica construído em Pyt
 ## Para gerar um arquivo executavel
 * pyinstaller --onefile --windowed --name "AutoClick V5" --hidden-import keyboard --hidden-import mouse --hidden-import ttkbootstrap main.py
 
+## Download Executavel
+* Download do arquivo executavel disponivel em https://github.com/jorgeRjunior/autoclick/tree/main/dist
 *OBS: Execute como administrador.
