@@ -44,3 +44,8 @@ Um aplicativo de autoclicker versátil com interface gráfica construído em Pyt
 *   ttkbootstrap
 *   Pillow (PIL)
 *   requests
+
+## Para gerar um arquivo executavel
+* pyinstaller --onefile --windowed --name "AutoClick V5" --hidden-import keyboard --hidden-import mouse --hidden-import ttkbootstrap main.py
+
+*OBS: Execute como administrador.
