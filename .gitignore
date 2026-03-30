@@ -1,5 +1,6 @@
 __pycache__/
 build/
-dist/
+dist/AutoClick_V5*
+dist/AutoClick_V6*
 *.pyc
 .claude/

@@ -1,54 +1,92 @@
-# AutoClick V5 by jorgeRjunior
+# AutoClick V7 by jorgeRjunior
+
+A versatile autoclicker application with GUI built in Python using Tkinter and ttkbootstrap.
 
 Um aplicativo de autoclicker versátil com interface gráfica construído em Python usando Tkinter e ttkbootstrap.
 
 ![Tela Principal](Screens/main.png)
 
-## Funcionalidades
+## What's New in V7 / Novidades na V7
 
-*   **Função Principal:** Configure rapidamente um autoclick global com gatilho (teclado ou mouse), intervalo e modo de operação (Segurar ou Alternar).
-*   **Funções Personalizadas:** Crie até 10 mapeamentos de automação independentes.
-    *   Defina gatilhos e ações específicas (tecla ou botão do mouse).
-    *   Configure intervalos individuais.
-    *   Escolha entre três modos de repetição:
-        *   **Contínuo:** Repete enquanto o gatilho é pressionado.
-        *   **Uma Vez:** Executa a ação uma única vez a cada pressionamento do gatilho.
-        *   **Alternar:** Primeiro clique liga a repetição, segundo clique desliga.
-    *   Ative/desative cada função individualmente.
-    *   As configurações personalizadas são salvas automaticamente.
-*   **Interface Moderna:** Utiliza `ttkbootstrap` para um visual mais agradável (tema 'cosmo' por padrão).
+### High-Precision Timer / Timer de Alta Precisão
+- Uses `timeBeginPeriod(1)` + hybrid spin-wait for sub-millisecond accuracy
+- Dynamic compensation measures action overhead and adjusts sleep time
+- Configured 100ms now delivers ~99-101ms instead of 75-114ms
+
+### Internationalization (i18n) / Internacionalização
+- Full support for **English** (default) and **Português (BR)**
+- Language selector in the top toolbar — switches all UI text instantly
+- Language preference saved automatically
+
+### Test Tab / Aba de Testes
+- Real-time statistics: average, min/max, standard deviation, precision %
+- Measurements log with color-coded status (green OK, yellow warning, red bad)
+- Input lag suggestion: after 20+ measurements, suggests optimal interval configuration
+- Uses your actual main tab settings to measure real timing accuracy
+
+## Features / Funcionalidades
+
+### Main Function / Função Principal
+- Configure a global autoclick with trigger (keyboard or mouse), interval and operation mode (Hold or Toggle)
+- Configure um autoclick global com gatilho (teclado ou mouse), intervalo e modo de operação (Segurar ou Alternar)
+
+### Custom Functions / Funções Personalizadas
+- Create up to 10 independent automation mappings
+- Crie até 10 mapeamentos de automação independentes
+    - Define specific triggers and actions (key or mouse button)
+    - Configure individual intervals (random range min-max)
+    - Choose between three repetition modes:
+        - **Continuous / Contínuo:** Repeats while trigger is pressed
+        - **Once / Uma Vez:** Executes action once per trigger press
+        - **Toggle / Alternar:** First press starts, second press stops
+    - Activate/deactivate each function individually
+    - Settings saved automatically
+
+### Test Tab / Aba de Testes
+- Detects current configuration from Main tab automatically
+- Start/Stop test with a single button
+- Real-time stats updated every 250ms:
+    - Configured interval, real average, min/max, std deviation, precision %
+- Last 100 measurements displayed with color-coded deviation
+- Smart suggestion panel recommends interval adjustments based on system overhead
 
 ![Tela de Funções Personalizadas](Screens/functions.png)
 
 ![Tela de Adicionar Função](Screens/new_function.png)
 
-## Como Usar
+## How to Use / Como Usar
 
-1.  **Instale as dependências:**
+1.  **Install dependencies / Instale as dependências:**
     ```bash
     pip install keyboard mouse ttkbootstrap Pillow requests
     ```
-    *(O script tenta instalar `keyboard`, `mouse` e `ttkbootstrap` automaticamente se não encontrados, mas é recomendado instalar manualmente).*
-2.  **Execute o script:**
+2.  **Run / Execute:**
     ```bash
     python main.py
     ```
 3.  **Configure:**
-    *   Use a aba "Função Principal" para uma configuração rápida.
-    *   Use a aba "Funções Personalizadas" para criar mapeamentos específicos. Clique em "Adicionar Nova Função", configure o gatilho, ação, intervalo e modo, e salve. Ative a função usando o checkbox.
+    - Use the "Main Function" tab for quick setup / Use a aba "Função Principal" para configuração rápida
+    - Use "Custom Functions" to create specific mappings / Use "Funções Personalizadas" para mapeamentos específicos
+    - Use "Test" tab to verify timing accuracy / Use a aba "Testes" para verificar a precisão do timing
+    - Switch language using the dropdown in the top-right corner / Troque o idioma usando o seletor no canto superior direito
 
-## Dependências
+## Dependencies / Dependências
 
-*   keyboard
-*   mouse
-*   ttkbootstrap
-*   Pillow (PIL)
-*   requests
+- keyboard
+- mouse
+- ttkbootstrap
+- Pillow (PIL)
+- requests
 
-## Para gerar um arquivo executavel
-* pyinstaller --onefile --windowed --name "AutoClick V5" --hidden-import keyboard --hidden-import mouse --hidden-import ttkbootstrap main.py
+## Build Executable / Gerar Executável
 
-## Download Executavel
-* Download do arquivo executavel disponivel em https://github.com/jorgeRjunior/autoclick/tree/main/dist
+```bash
+pyinstaller AutoClick_V6.spec --clean --noconfirm
+```
 
-* **OBS: Execute como administrador.**
+## Download
+
+Download the executable from / Baixe o executável em:
+https://github.com/jorgeRjunior/autoclick/tree/main/dist
+
+**NOTE: Run as administrator. / OBS: Execute como administrador.**

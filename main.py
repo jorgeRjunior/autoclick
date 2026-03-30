@@ -48,7 +48,7 @@ def show_splash():
             animate()
     except Exception:
         splash.geometry("300x100+500+400")
-        tk.Label(splash, text="Loading AutoClick V6...", fg='white', bg='black',
+        tk.Label(splash, text="Loading AutoClick V7...", fg='white', bg='black',
                  font=("Helvetica", 14)).pack(expand=True)
 
     splash.update()
@@ -93,11 +93,11 @@ if sys.platform == 'win32':
 # --- Internationalization ---
 TRANSLATIONS = {
     "en": {
-        "window_title": "AutoClick V6 dev by jorgeRjunior",
+        "window_title": "AutoClick V7 dev by jorgeRjunior",
         "tab_main": "Main Function",
         "tab_custom": "Custom Functions",
         "tab_test": "Test",
-        "title": "AutoClick V6",
+        "title": "AutoClick V7",
         "subtitle": "dev by jorgeRjunior",
         "input_type_frame": "Input Type",
         "radio_keyboard": "Keyboard",
@@ -184,7 +184,7 @@ TRANSLATIONS = {
         "dlg_captured_action_mouse": "Action captured: Mouse '{value}'. Adjust interval and click 'Save'.",
         "btn_save": "Save",
         "btn_cancel": "Cancel",
-        "splash_loading": "Loading AutoClick V6...",
+        "splash_loading": "Loading AutoClick V7...",
         "lbl_language": "Language:",
         "test_config_title": "Detected Configuration",
         "test_lbl_input": "Input:",
@@ -213,11 +213,11 @@ TRANSLATIONS = {
         "test_no_config": "Configure the main tab first before testing.",
     },
     "pt-br": {
-        "window_title": "AutoClick V6 dev by jorgeRjunior",
+        "window_title": "AutoClick V7 dev by jorgeRjunior",
         "tab_main": "Função Principal",
         "tab_custom": "Funções Personalizadas",
         "tab_test": "Testes",
-        "title": "AutoClick V6",
+        "title": "AutoClick V7",
         "subtitle": "dev by jorgeRjunior",
         "input_type_frame": "Tipo de Entrada",
         "radio_keyboard": "Teclado",
@@ -304,7 +304,7 @@ TRANSLATIONS = {
         "dlg_captured_action_mouse": "Ação capturada: Mouse '{value}'. Ajuste o intervalo e clique em 'Salvar'.",
         "btn_save": "Salvar",
         "btn_cancel": "Cancelar",
-        "splash_loading": "Carregando AutoClick V6...",
+        "splash_loading": "Carregando AutoClick V7...",
         "lbl_language": "Idioma:",
         "test_config_title": "Configuração Detectada",
         "test_lbl_input": "Entrada:",
