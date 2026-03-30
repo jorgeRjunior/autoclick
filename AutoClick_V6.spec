@@ -35,7 +35,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='AutoClick_V6',
+    name='AutoClick_V7',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
