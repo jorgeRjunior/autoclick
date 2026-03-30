@@ -4,7 +4,8 @@
             "trigger_key": "x",
             "action_type": "keyboard",
             "action_key": "s",
-            "interval": "1500",
+            "interval_min": "1200",
+            "interval_max": "1800",
             "mode": "toggle",
             "is_active": true
         }
